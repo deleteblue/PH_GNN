@@ -1,0 +1,70 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
+
+%post
+    apt-get update && apt-get install -y \
+        curl git wget vim build-essential \
+        && apt-get clean
+
+    pip install --upgrade pip
+    pip install torch-geometric
+    pip install pyg-lib torch-scatter torch-sparse \
+        torch-cluster torch-spline-conv \
+        -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
+    pip install fair-esm
+    pip install scikit-learn pandas numpy scipy
+    pip install matplotlib seaborn
+    pip install wandb
+    pip install biopython
+    pip install rdkit-pypi
+    pip install networkx
+    pip install gudhi
+
+    # Additional dependencies for data processing
+    pip install openpyxl xlrd
+
+    # AlphaFold2 system dependencies
+    apt-get update && apt-get install -y \
+        hmmer \
+        kalign \
+        aria2 \
+        rsync \
+        && apt-get clean
+
+    # ColabFold first - let it manage JAX dependencies
+    pip install colabfold[alphafold]
+
+    # Install compatible JAX/jaxlib versions for CUDA 12.1
+    pip install --upgrade "jax==0.4.26" "jaxlib==0.4.26+cuda12.cudnn89" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+    # AlphaFold2 Python dependencies
+    pip install dm-haiku
+    pip install ml_collections
+    pip install absl-py
+    pip install dm-tree
+
+    # Install AlphaFold2 from public DeepMind repository
+    cd /opt
+    git clone https://github.com/deepmind/alphafold.git
+    cd alphafold
+    pip install -r requirements.txt
+
+    # Create directories for AlphaFold2 data
+    mkdir -p /opt/alphafold_data
+    mkdir -p /opt/alphafold_models
+
+    # Install Claude Code and move to system-wide location
+    export HOME=/root
+    curl -fsSL https://claude.ai/install.sh | bash
+    cp /root/.local/bin/claude /usr/local/bin/claude
+    chmod +x /usr/local/bin/claude
+
+%environment
+    export PATH="/usr/local/bin:$PATH"
+    export ALPHAFOLD_DIR="/opt/alphafold"
+    export ALPHAFOLD_DATA_DIR="/opt/alphafold_data"
+    export ALPHAFOLD_MODELS_DIR="/opt/alphafold_models"
+    export PATH="${ALPHAFOLD_DIR}:$PATH"
+
+%runscript
+    bash
